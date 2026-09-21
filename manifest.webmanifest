@@ -1,0 +1,48 @@
+{
+  "name": "CATALYST CEST & Unit Test Manager",
+  "short_name": "CATALYST CEST",
+  "description": "CATALYST CEST and Unit Test Examination Analytics",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#071d3b",
+  "theme_color": "#071d3b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "CEST Mark Entry",
+      "short_name": "CEST",
+      "url": "./index.html#entry",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Performance Analysis",
+      "short_name": "Analysis",
+      "url": "./index.html#analysis",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
