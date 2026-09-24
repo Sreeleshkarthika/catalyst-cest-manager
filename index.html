@@ -1,4 +1,4 @@
-<!doctype html>
+k<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1164,6 +1164,548 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{renderPremi
     },500);
 
   });
+
+})();
+</script>
+<style>
+.png-download-btn{
+  background:#0ea5e9 !important;
+  color:#fff !important;
+  font-weight:800 !important;
+  border:0 !important;
+  border-radius:10px !important;
+  padding:11px 16px !important;
+  cursor:pointer !important;
+}
+
+.png-download-btn:hover{
+  background:#0284c7 !important;
+}
+</style>
+
+<script>
+/* =========================================================
+   CATALYST CEST - DOWNLOAD MARKLIST AS PNG
+   Same colourful style as the original marklist
+   ========================================================= */
+
+function downloadMarklistPNG(){
+
+  const cestName = current();
+  const cest = state.cests[cestName];
+
+  if(!cest){
+    alert("CEST select ചെയ്യുക.");
+    return;
+  }
+
+  const date = cest.date || "";
+
+  /* ---------- Rank ---------- */
+
+  const rank = rankMap(cestName);
+
+  /* ---------- Student data ---------- */
+
+  let rows = state.students.map(function(name,index){
+
+    const m = cest.marks[name] || {};
+
+    rec(m);
+
+    return {
+      name:name,
+      m:m,
+      rank:rank[name] || "—",
+      index:index
+    };
+
+  });
+
+  /* ---------- Same rank order as app ---------- */
+
+  rows.sort(function(a,b){
+
+    if(a.m.absent && !b.m.absent) return 1;
+    if(!a.m.absent && b.m.absent) return -1;
+
+    if(a.m.absent && b.m.absent){
+      return a.index-b.index;
+    }
+
+    const A=a.m;
+    const B=b.m;
+
+    const n=function(v){
+      return Number.isFinite(Number(v)) ? Number(v) : 0;
+    };
+
+    const ka=[
+      n(A.total),
+      n(A.bs),
+      n(A.cs),
+      n(A.ps),
+      n(A.bc),
+      n(A.cc),
+      n(A.pc),
+      -n(A.bw),
+      -n(A.cw),
+      -n(A.pw)
+    ];
+
+    const kb=[
+      n(B.total),
+      n(B.bs),
+      n(B.cs),
+      n(B.ps),
+      n(B.bc),
+      n(B.cc),
+      n(B.pc),
+      -n(B.bw),
+      -n(B.cw),
+      -n(B.pw)
+    ];
+
+    for(let i=0;i<ka.length;i++){
+
+      if(ka[i]!==kb[i]){
+        return kb[i]-ka[i];
+      }
+
+    }
+
+    return a.index-b.index;
+
+  });
+
+
+  /* ---------- Exam title ---------- */
+
+  let examTitle=cestName;
+
+  if(/^CEST\s*\d+/i.test(cestName)){
+
+    examTitle=cestName.replace(
+      /^CEST\s*(\d+)/i,
+      "NEET Model $1"
+    );
+
+  }
+
+
+  /* ---------- Dimensions ---------- */
+
+  const W=1800;
+  const rowH=58;
+  const headerH=145;
+  const titleH=120;
+
+  const H=
+    titleH+
+    headerH+
+    (rows.length*rowH)+
+    35;
+
+
+  /* ---------- SVG helpers ---------- */
+
+  function escSVG(value){
+
+    return String(value ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&apos;");
+
+  }
+
+  function text(x,y,value,size,weight="700",anchor="middle"){
+
+    return `
+      <text
+        x="${x}"
+        y="${y}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="${size}"
+        font-weight="${weight}"
+        text-anchor="${anchor}"
+        dominant-baseline="middle"
+        fill="#000">
+        ${escSVG(value)}
+      </text>
+    `;
+
+  }
+
+  function rect(x,y,w,h,fill,stroke="#000",sw=3){
+
+    return `
+      <rect
+        x="${x}"
+        y="${y}"
+        width="${w}"
+        height="${h}"
+        fill="${fill}"
+        stroke="${stroke}"
+        stroke-width="${sw}"/>
+    `;
+
+  }
+
+
+  /* ---------- Column positions ---------- */
+
+  const cols=[
+    {x:0,    w:90,  title:"Sl No"},
+    {x:90,   w:320, title:"Name"},
+
+    {x:410,  w:110, title:"Correct"},
+    {x:520,  w:110, title:"Wrong"},
+    {x:630,  w:150, title:"Score /180"},
+
+    {x:780,  w:110, title:"Correct"},
+    {x:890,  w:110, title:"Wrong"},
+    {x:1000, w:150, title:"Score /180"},
+
+    {x:1150, w:110, title:"Correct"},
+    {x:1260, w:110, title:"Wrong"},
+    {x:1370, w:150, title:"Score /360"},
+
+    {x:1520, w:150, title:"Total /720"},
+    {x:1670, w:130, title:"Rank"}
+  ];
+
+
+  let svg="";
+
+  /* ---------- Background ---------- */
+
+  svg+=`
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="${W}"
+      height="${H}"
+      viewBox="0 0 ${W} ${H}">
+
+      <rect
+        width="${W}"
+        height="${H}"
+        fill="#ffffff"/>
+
+  `;
+
+
+  /* ---------- Main title ---------- */
+
+  svg+=text(
+    W/2,
+    30,
+    "CATALYST The Med & Engg. Entrance",
+    30,
+    "700"
+  );
+
+  svg+=text(
+    W/2,
+    70,
+    examTitle,
+    28,
+    "700"
+  );
+
+  svg+=text(
+    W-40,
+    30,
+    date,
+    25,
+    "700",
+    "end"
+  );
+
+
+  /* ---------- Header ---------- */
+
+  const hy=titleH;
+
+  /* Sl No */
+  svg+=rect(0,hy,90,headerH,"#08aee5");
+
+  /* Name */
+  svg+=rect(90,hy,320,headerH,"#08aee5");
+
+  /* Physics */
+  svg+=rect(410,hy,370,45,"#08aee5");
+  svg+=text(595,hy+23,"PHYSICS",25,"800");
+
+  /* Chemistry */
+  svg+=rect(780,hy,370,45,"#08aee5");
+  svg+=text(965,hy+23,"CHEMISTRY",25,"800");
+
+  /* Biology */
+  svg+=rect(1150,hy,370,45,"#08aee5");
+  svg+=text(1335,hy+23,"BIOLOGY",25,"800");
+
+  /* Total */
+  svg+=rect(1520,hy,150,headerH,"#08aee5");
+
+  /* Rank */
+  svg+=rect(1670,hy,130,headerH,"#08aee5");
+
+
+  svg+=text(45,hy+72,"Sl No",22,"800");
+  svg+=text(250,hy+72,"Name",22,"800");
+
+  svg+=text(595,hy+72,"Correct",19,"800");
+  svg+=text(705,hy+72,"Wrong",19,"800");
+  svg+=text(595,hy+112,"Score /180",19,"800");
+
+  svg+=text(965,hy+72,"Correct",19,"800");
+  svg+=text(1075,hy+72,"Wrong",19,"800");
+  svg+=text(965,hy+112,"Score /180",19,"800");
+
+  svg+=text(1220,hy+72,"Correct",19,"800");
+  svg+=text(1310,hy+72,"Wrong",19,"800");
+  svg+=text(1290,hy+112,"Score /360",19,"800");
+
+  svg+=text(1595,hy+72,"Total out",19,"800");
+  svg+=text(1595,hy+112,"of 720",19,"800");
+
+  svg+=text(1735,hy+85,"Rank",22,"800");
+
+
+  /* ---------- Student rows ---------- */
+
+  rows.forEach(function(row,i){
+
+    const y=titleH+headerH+(i*rowH);
+
+    const m=row.m;
+
+    /* yellow row */
+    svg+=rect(
+      0,
+      y,
+      W,
+      rowH,
+      "#fff200"
+    );
+
+    const absent=!!m.absent;
+
+    const vals=absent
+      ? ["—",row.name,"—","—","Ab","—","—","Ab","—","—","Ab","Ab",""]
+      : [
+          i+1,
+          row.name,
+          m.pc ?? "",
+          m.pw ?? "",
+          m.ps ?? "",
+          m.cc ?? "",
+          m.cw ?? "",
+          m.cs ?? "",
+          m.bc ?? "",
+          m.bw ?? "",
+          m.bs ?? "",
+          m.total ?? "",
+          row.rank
+        ];
+
+
+    cols.forEach(function(col){
+
+      svg+=`
+        <line
+          x1="${col.x}"
+          y1="${y}"
+          x2="${col.x}"
+          y2="${y+rowH}"
+          stroke="#000"
+          stroke-width="3"/>
+      `;
+
+    });
+
+    svg+=`
+      <line
+        x1="0"
+        y1="${y}"
+        x2="${W}"
+        y2="${y}"
+        stroke="#000"
+        stroke-width="3"/>
+    `;
+
+
+    /* values */
+
+    svg+=text(45,y+rowH/2,vals[0],20,"700");
+
+    svg+=text(
+      105,
+      y+rowH/2,
+      vals[1],
+      20,
+      "700",
+      "start"
+    );
+
+    svg+=text(465,y+rowH/2,vals[2],20,"700");
+    svg+=text(575,y+rowH/2,vals[3],20,"700");
+    svg+=text(705,y+rowH/2,vals[4],20,"700");
+
+    svg+=text(835,y+rowH/2,vals[5],20,"700");
+    svg+=text(945,y+rowH/2,vals[6],20,"700");
+    svg+=text(1075,y+rowH/2,vals[7],20,"700");
+
+    svg+=text(1205,y+rowH/2,vals[8],20,"700");
+    svg+=text(1315,y+rowH/2,vals[9],20,"700");
+    svg+=text(1445,y+rowH/2,vals[10],20,"700");
+
+    svg+=text(1595,y+rowH/2,vals[11],20,"800");
+
+    svg+=text(1735,y+rowH/2,vals[12],20,"800");
+
+  });
+
+
+  /* bottom border */
+
+  svg+=`
+    <rect
+      x="0"
+      y="${titleH}"
+      width="${W}"
+      height="${headerH+(rows.length*rowH)}"
+      fill="none"
+      stroke="#000"
+      stroke-width="4"/>
+  `;
+
+
+  svg+="</svg>";
+
+
+  /* ---------- SVG → PNG ---------- */
+
+  const blob=new Blob(
+    [svg],
+    {type:"image/svg+xml;charset=utf-8"}
+  );
+
+  const url=URL.createObjectURL(blob);
+
+  const img=new Image();
+
+  img.onload=function(){
+
+    const scale=1.5;
+
+    const canvas=document.createElement("canvas");
+
+    canvas.width=W*scale;
+    canvas.height=H*scale;
+
+    const ctx=canvas.getContext("2d");
+
+    ctx.fillStyle="#ffffff";
+
+    ctx.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    ctx.drawImage(
+      img,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob(function(png){
+
+      const downloadURL=URL.createObjectURL(png);
+
+      const a=document.createElement("a");
+
+      const safeName=cestName
+        .replace(/[^a-z0-9]+/gi,"_")
+        .replace(/^_+|_+$/g,"");
+
+      a.href=downloadURL;
+
+      a.download=
+        "CATALYST_"+safeName+"_Marklist.png";
+
+      document.body.appendChild(a);
+
+      a.click();
+
+      a.remove();
+
+      setTimeout(function(){
+        URL.revokeObjectURL(downloadURL);
+      },2000);
+
+    },"image/png");
+
+  };
+
+  img.onerror=function(){
+
+    URL.revokeObjectURL(url);
+
+    alert("PNG generate ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+
+  };
+
+  img.src=url;
+
+}
+
+
+/* ---------- Add PNG button ---------- */
+
+(function(){
+
+  function addPNGButton(){
+
+    if(document.getElementById("downloadMarklistPNGBtn")){
+      return;
+    }
+
+    const toolbar=
+      document.querySelector("#entry .controls.toolbar");
+
+    if(!toolbar){
+      return;
+    }
+
+    const btn=document.createElement("button");
+
+    btn.id="downloadMarklistPNGBtn";
+
+    btn.className="png-download-btn";
+
+    btn.textContent="🖼️ Download Marklist PNG";
+
+    btn.onclick=downloadMarklistPNG;
+
+    toolbar.appendChild(btn);
+
+  }
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+      setTimeout(addPNGButton,700);
+    }
+  );
 
 })();
 </script>
