@@ -813,5 +813,359 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 }
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{renderPremiumModules()}catch(e){console.warn(e)}},100));
 </script>
+<style>
+#student-management-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  width:100%;
+  margin-top:8px;
+}
+
+#student-management-actions button{
+  min-height:44px;
+  border:0;
+  border-radius:10px;
+  font-weight:800;
+  font-size:14px;
+}
+
+.add-student-btn{
+  background:#16a34a;
+  color:white;
+}
+
+.delete-student-btn{
+  background:#dc2626;
+  color:white;
+}
+
+.student-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:99999;
+}
+
+.student-modal-box{
+  width:min(420px,100%);
+  background:white;
+  border-radius:16px;
+  padding:20px;
+  box-sizing:border-box;
+}
+
+.student-modal-box h3{
+  margin-top:0;
+}
+
+.student-modal-box input,
+.student-modal-box select{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px;
+  margin:8px 0;
+  border:1px solid #ccc;
+  border-radius:8px;
+  font-size:16px;
+}
+
+.student-modal-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+
+.student-modal-actions button{
+  padding:12px;
+  border:0;
+  border-radius:8px;
+  font-weight:700;
+}
+</style>
+
+<script>
+(function(){
+
+  /* ---------- ADD STUDENT ---------- */
+
+  window.openAddStudent=function(){
+    document.getElementById("addStudentModal").style.display="flex";
+    setTimeout(function(){
+      document.getElementById("newStudentName").focus();
+    },100);
+  };
+
+  window.closeAddStudent=function(){
+    document.getElementById("addStudentModal").style.display="none";
+    document.getElementById("newStudentName").value="";
+  };
+
+  window.addNewStudent=function(){
+
+    var name=document.getElementById("newStudentName").value.trim();
+
+    if(!name){
+      alert("Student Name enter ചെയ്യുക.");
+      return;
+    }
+
+    /* Duplicate check */
+    var duplicate=state.students.some(function(student){
+      return student.toLowerCase()===name.toLowerCase();
+    });
+
+    if(duplicate){
+      alert("ഈ student ഇതിനകം list-ൽ ഉണ്ട്.");
+      return;
+    }
+
+    /* Student list */
+    state.students.push(name);
+
+    /* Profile */
+    if(!state.profiles){
+      state.profiles={};
+    }
+
+    state.profiles[profileKey(name)]={
+      name:name,
+      phone:"",
+      parent:"",
+      parentPhone:"",
+      school:"",
+      address:""
+    };
+
+    /* Unit Test */
+    if(!state.unitTests){
+      state.unitTests={};
+    }
+
+    state.unitTests[name]=[];
+
+    /* Add blank marks to every CEST */
+    Object.keys(state.cests || {}).forEach(function(cest){
+
+      if(!state.cests[cest].marks){
+        state.cests[cest].marks={};
+      }
+
+      state.cests[cest].marks[name]={
+        biology:{correct:0,wrong:0},
+        chemistry:{correct:0,wrong:0},
+        physics:{correct:0,wrong:0}
+      };
+
+    });
+
+    save();
+    closeAddStudent();
+
+    if(typeof renderAll==="function"){
+      renderAll();
+    }
+
+    alert("✅ "+name+" successfully added.");
+  };
+
+
+  /* ---------- DELETE STUDENT ---------- */
+
+  window.openDeleteStudent=function(){
+
+    var select=document.getElementById("deleteStudentSelect");
+
+    select.innerHTML="";
+
+    state.students.forEach(function(name){
+
+      var option=document.createElement("option");
+
+      option.value=name;
+      option.textContent=name;
+
+      select.appendChild(option);
+
+    });
+
+    document.getElementById("deleteStudentModal").style.display="flex";
+  };
+
+  window.closeDeleteStudent=function(){
+    document.getElementById("deleteStudentModal").style.display="none";
+  };
+
+  window.deleteSelectedStudent=function(){
+
+    var name=document.getElementById("deleteStudentSelect").value;
+
+    if(!name){
+      return;
+    }
+
+    if(state.students.length<=1){
+      alert("കുറഞ്ഞത് ഒരു student എങ്കിലും വേണം.");
+      return;
+    }
+
+    var ok=confirm(
+      "⚠️ "+name+
+      " നെ delete ചെയ്യണോ?\n\n"+
+      "ഈ student's CEST marks, Unit Test data, profile എന്നിവയും delete ചെയ്യും."
+    );
+
+    if(!ok){
+      return;
+    }
+
+    /* Remove from student list */
+    state.students=state.students.filter(function(student){
+      return student!==name;
+    });
+
+    /* Remove CEST marks */
+    Object.keys(state.cests || {}).forEach(function(cest){
+
+      if(state.cests[cest].marks){
+        delete state.cests[cest].marks[name];
+      }
+
+    });
+
+    /* Remove Unit Test data */
+    if(state.unitTests){
+      delete state.unitTests[name];
+    }
+
+    /* Remove profile */
+    if(state.profiles){
+      delete state.profiles[profileKey(name)];
+    }
+
+    /* Remove from average selection */
+    if(state.avgSelected){
+      state.avgSelected=state.avgSelected.filter(function(student){
+        return student!==name;
+      });
+    }
+
+    save();
+    closeDeleteStudent();
+
+    if(typeof renderAll==="function"){
+      renderAll();
+    }
+
+    alert("🗑️ "+name+" deleted successfully.");
+  };
+
+
+  /* ---------- CREATE UI ---------- */
+
+  function createStudentManagementUI(){
+
+    if(document.getElementById("student-management-actions")){
+      return;
+    }
+
+    var controls=document.querySelectorAll("#entry .controls");
+
+    if(!controls || !controls[1]){
+      return;
+    }
+
+    /* Buttons */
+    var actions=document.createElement("div");
+
+    actions.id="student-management-actions";
+
+    actions.innerHTML=
+      '<button class="add-student-btn" onclick="openAddStudent()">🟢 + New Student</button>'+
+      '<button class="delete-student-btn" onclick="openDeleteStudent()">🔴 Delete Student</button>';
+
+    controls[1].appendChild(actions);
+
+
+    /* ADD MODAL */
+
+    var addModal=document.createElement("div");
+
+    addModal.id="addStudentModal";
+    addModal.className="student-modal";
+
+    addModal.innerHTML=
+      '<div class="student-modal-box">'+
+
+        '<h3>➕ Add New Student</h3>'+
+
+        '<input id="newStudentName" type="text" '+
+        'placeholder="Enter Student Name">'+
+
+        '<div class="student-modal-actions">'+
+
+          '<button onclick="closeAddStudent()">Cancel</button>'+
+
+          '<button class="add-student-btn" '+
+          'onclick="addNewStudent()">Add Student</button>'+
+
+        '</div>'+
+
+      '</div>';
+
+    document.body.appendChild(addModal);
+
+
+    /* DELETE MODAL */
+
+    var deleteModal=document.createElement("div");
+
+    deleteModal.id="deleteStudentModal";
+    deleteModal.className="student-modal";
+
+    deleteModal.innerHTML=
+      '<div class="student-modal-box">'+
+
+        '<h3>🗑️ Delete Student</h3>'+
+
+        '<select id="deleteStudentSelect"></select>'+
+
+        '<p style="color:#b91c1c;font-weight:700;">'+
+        '⚠️ Student delete ചെയ്താൽ CEST marks, Unit Test data, profile എന്നിവയും delete ചെയ്യും.'+
+        '</p>'+
+
+        '<div class="student-modal-actions">'+
+
+          '<button onclick="closeDeleteStudent()">Cancel</button>'+
+
+          '<button class="delete-student-btn" '+
+          'onclick="deleteSelectedStudent()">Delete</button>'+
+
+        '</div>'+
+
+      '</div>';
+
+    document.body.appendChild(deleteModal);
+
+  }
+
+
+  /* ---------- START ---------- */
+
+  document.addEventListener("DOMContentLoaded",function(){
+
+    setTimeout(function(){
+      createStudentManagementUI();
+    },500);
+
+  });
+
+})();
+</script>
 </body>
 </html>
